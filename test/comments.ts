@@ -869,5 +869,4 @@ function runTestsForParser(parserId: any) {
       assert.strictEqual(recast.print(ast).code, code);
     });
   });
-
 }

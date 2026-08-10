@@ -5,7 +5,9 @@ import * as types from "ast-types";
 import { parse } from "../lib/parser";
 const hasOwn = Object.prototype.hasOwnProperty;
 
-describe("Syntax", function () {
+// Babel 7 no longer supports Node 4 or 5.
+const nodeMajorVersion = parseInt(process.versions.node, 10);
+(nodeMajorVersion >= 6 ? describe : xdescribe)("Syntax", function () {
   // Make sure the pretty-printer can print all node types currently provided by
   // types.namedTypes.
   describe("Pretty-printer switch (node.type) cases implemented", function () {

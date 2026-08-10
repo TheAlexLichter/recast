@@ -4,6 +4,8 @@ import path from "path";
 import * as types from "ast-types";
 import * as recast from "../main";
 
+const nodeMajorVersion = parseInt(process.versions.node, 10);
+
 function testFile(path: string, options: { parser?: any } = {}) {
   fs.readFile(path, "utf-8", function (err, source) {
     assert.equal(err, null);
@@ -21,7 +23,10 @@ function addTest(name: string) {
     const filename = path.join(__dirname, "..", name);
 
     if (path.extname(filename) === ".ts") {
-      testFile(filename, { parser: require("../parsers/typescript") });
+      // Babel 7 no longer supports Node 4 and 5.
+      if (nodeMajorVersion >= 6) {
+        testFile(filename, { parser: require("../parsers/typescript") });
+      }
     } else {
       testFile(filename);
     }

@@ -125,6 +125,96 @@ it("should not double parentheses in Babel", function () {
   );
 });
 
+describe("should preserve significant whitespace around JSX expressions", function () {
+  // When a JSXElement subtree is reprinted generically (for example because an
+  // identifier inside it changed), the printer collapses source indentation on
+  // JSXText children. It must not collapse a *significant* inline space that
+  // sits between text and an adjacent {expression}, otherwise
+  // `hello {name} world` would be reprinted as `hello {name}world`.
+  const printer = new Printer({ tabWidth: 2 });
+
+  function renameAndPrint(source: string, from: string, to: string) {
+    const ast = parse(source, { parser: require("../parsers/babel") });
+    types.visit(ast, {
+      visitJSXIdentifier(path: any) {
+        if (path.node.name === from) {
+          path.node.name = to;
+        }
+        this.traverse(path);
+      },
+    });
+    return printer.print(ast).code;
+  }
+
+  it("preserves the space before text that follows an expression", function () {
+    assert.strictEqual(
+      renameAndPrint(
+        "function C() {\n  return (\n    <Text>hello {name} world</Text>\n  );\n}",
+        "Text",
+        "Label",
+      ),
+      "function C() {\n  return (<Label>hello {name} world</Label>);\n}",
+    );
+  });
+
+  it("preserves the space before an expression that follows text", function () {
+    assert.strictEqual(
+      renameAndPrint(
+        "function C() {\n  return (\n    <Text>hello {name}</Text>\n  );\n}",
+        "Text",
+        "Label",
+      ),
+      "function C() {\n  return (<Label>hello {name}</Label>);\n}",
+    );
+  });
+
+  it("preserves the space after an expression at the start of an element", function () {
+    assert.strictEqual(
+      renameAndPrint(
+        "function C() {\n  return (\n    <Text>{name} world</Text>\n  );\n}",
+        "Text",
+        "Label",
+      ),
+      "function C() {\n  return (<Label>{name} world</Label>);\n}",
+    );
+  });
+
+  it("preserves spaces around multiple adjacent expressions", function () {
+    assert.strictEqual(
+      renameAndPrint(
+        "function C() {\n  return (\n    <Text>a {x} b {y} c</Text>\n  );\n}",
+        "Text",
+        "Label",
+      ),
+      "function C() {\n  return (<Label>a {x} b {y} c</Label>);\n}",
+    );
+  });
+
+  it("still strips indentation whitespace containing a newline", function () {
+    // A JSXText child whose leading whitespace contains a newline is source
+    // indentation and should continue to be stripped entirely.
+    const source =
+      "function C() {\n" +
+      "  return (\n" +
+      "    <Text>\n" +
+      "      hello {name}\n" +
+      "    </Text>\n" +
+      "  );\n" +
+      "}";
+    assert.strictEqual(
+      renameAndPrint(source, "Text", "Label"),
+      "function C() {\n  return (\n    <Label>hello {name}\n    </Label>\n  );\n}",
+    );
+  });
+
+  it("leaves an unchanged tree byte-for-byte (no-change control)", function () {
+    const source =
+      "function C() {\n  return (\n    <Text>hello {name} world</Text>\n  );\n}";
+    const ast = parse(source, { parser: require("../parsers/babel") });
+    assert.strictEqual(printer.print(ast).code, source);
+  });
+});
+
 describe("should preserve blank lines between JSX children", function () {
   // The blank line only survives if the whitespace-only JSXText between the
   // two children is reprinted as "\n\n" rather than collapsed to "\n".

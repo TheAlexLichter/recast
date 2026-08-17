@@ -1338,7 +1338,17 @@ function genericPrintNoParens(path: any, options: any, print: any) {
             typeof child.value === "string"
           ) {
             if (/\S/.test(child.value)) {
-              return child.value.replace(/^\s+/g, "");
+              // Collapse leading whitespace on JSXText children. Leading
+              // whitespace that contains a newline is source indentation and
+              // is safe to strip entirely (indentation is reapplied via
+              // indentTail below). Leading whitespace with no newline is
+              // significant inline whitespace adjacent to a sibling (typically
+              // a {expression} container); per JSX text semantics it collapses
+              // to a single space and must be preserved, otherwise e.g.
+              // `foo {bar} baz` would reprint as `foo {bar}baz`.
+              return child.value.replace(/^\s+/, (whitespace: string) =>
+                /\n/.test(whitespace) ? "" : " ",
+              );
             } else if (/\n\s*\n/.test(child.value)) {
               return "\n\n";
             } else if (/\n/.test(child.value)) {

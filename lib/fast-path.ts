@@ -463,6 +463,20 @@ FPp.needsParens = function (assumeExpressionContext) {
           const no = node.operator;
           const np = PRECEDENCE[no];
 
+          // `??` cannot be combined with `||` or `&&` without parentheses.
+          // The `CoalesceExpression` production only admits
+          // `BitwiseORExpression` operands, plus a nested
+          // `CoalesceExpression` on the left, so both `a || b ?? c` and
+          // `a ?? b || c` are SyntaxErrors. Comparing precedence only
+          // parenthesizes a `??` nested inside `||` or `&&`, never a `||`
+          // or `&&` nested inside `??`.
+          if (
+            (po === "??" && (no === "||" || no === "&&")) ||
+            (no === "??" && (po === "||" || po === "&&"))
+          ) {
+            return true;
+          }
+
           if (pp > np) {
             return true;
           }

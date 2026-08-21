@@ -14,7 +14,7 @@ export function parse(source: string, options?: any) {
     allowHashBang: true,
     allowImportExportEverywhere: true,
     allowReturnOutsideFunction: true,
-    ecmaVersion: getOption(options, "ecmaVersion", 8),
+    ecmaVersion: getOption(options, "ecmaVersion", 2020),
     sourceType: getOption(options, "sourceType", "module"),
     locations: true,
     onComment: comments,

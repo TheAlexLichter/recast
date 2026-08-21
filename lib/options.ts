@@ -96,6 +96,14 @@ export interface Options extends DeprecatedOptions {
   tolerant?: boolean;
 
   /**
+   * The ECMAScript version passed through to the parser. Parsers that do not
+   * accept an ecmaVersion option, such as esprima and @babel/parser, ignore
+   * it.
+   * @default 2020
+   */
+  ecmaVersion?: number | "latest";
+
+  /**
    * If you want to override the quotes used in string literals, specify
    * either "single", "double", or "auto" here ("auto" will select the one
    * which results in the shorter literal) Otherwise, use double quotes.
@@ -177,6 +185,7 @@ const defaults: Options = {
   inputSourceMap: null,
   range: false,
   tolerant: true,
+  ecmaVersion: 2020,
   quote: null,
   trailingComma: false,
   arrayBracketSpacing: false,
@@ -212,6 +221,7 @@ export function normalize(opts?: Options): NormalizedOptions {
     parser: get("esprima") || get("parser"),
     range: get("range"),
     tolerant: get("tolerant"),
+    ecmaVersion: get("ecmaVersion"),
     quote: get("quote"),
     trailingComma: get("trailingComma"),
     arrayBracketSpacing: get("arrayBracketSpacing"),

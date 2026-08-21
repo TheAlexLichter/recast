@@ -1219,6 +1219,92 @@ describe("printer", function () {
     assert.strictEqual(pretty, code);
   });
 
+  it("adds parentheses when `??` is combined with `||` or `&&`", function () {
+    const cases: [string, any][] = [
+      [
+        "(a || b) ?? c;",
+        b.logicalExpression(
+          "??",
+          b.logicalExpression("||", b.identifier("a"), b.identifier("b")),
+          b.identifier("c"),
+        ),
+      ],
+      [
+        "a ?? (b || c);",
+        b.logicalExpression(
+          "??",
+          b.identifier("a"),
+          b.logicalExpression("||", b.identifier("b"), b.identifier("c")),
+        ),
+      ],
+      [
+        "(a && b) ?? c;",
+        b.logicalExpression(
+          "??",
+          b.logicalExpression("&&", b.identifier("a"), b.identifier("b")),
+          b.identifier("c"),
+        ),
+      ],
+      [
+        "a ?? (b && c);",
+        b.logicalExpression(
+          "??",
+          b.identifier("a"),
+          b.logicalExpression("&&", b.identifier("b"), b.identifier("c")),
+        ),
+      ],
+      [
+        "(a ?? b) || c;",
+        b.logicalExpression(
+          "||",
+          b.logicalExpression("??", b.identifier("a"), b.identifier("b")),
+          b.identifier("c"),
+        ),
+      ],
+    ];
+
+    cases.forEach(function ([code, expression]) {
+      const ast = b.program([b.expressionStatement(expression)]);
+      const printer = new Printer();
+      assert.strictEqual(printer.printGenerically(ast).code, code);
+    });
+  });
+
+  it("leaves `??` unparenthesized when it is not combined with `||` or `&&`", function () {
+    const cases: [string, any][] = [
+      [
+        "a ?? b ?? c;",
+        b.logicalExpression(
+          "??",
+          b.logicalExpression("??", b.identifier("a"), b.identifier("b")),
+          b.identifier("c"),
+        ),
+      ],
+      [
+        "a + b ?? c;",
+        b.logicalExpression(
+          "??",
+          b.binaryExpression("+", b.identifier("a"), b.identifier("b")),
+          b.identifier("c"),
+        ),
+      ],
+      [
+        "a ?? b + c;",
+        b.logicalExpression(
+          "??",
+          b.identifier("a"),
+          b.binaryExpression("+", b.identifier("b"), b.identifier("c")),
+        ),
+      ],
+    ];
+
+    cases.forEach(function ([code, expression]) {
+      const ast = b.program([b.expressionStatement(expression)]);
+      const printer = new Printer();
+      assert.strictEqual(printer.printGenerically(ast).code, code);
+    });
+  });
+
   it("prints class property initializers with type annotations correctly", function () {
     const code = ["class A {", "  foo = (a: b): void => {};", "}"].join(eol);
 

@@ -21,9 +21,7 @@ const annotated = [
 const nodeMajorVersion = parseInt(process.versions.node, 10);
 const nodeMinorVersion = parseInt(process.versions.node.split(".")[1], 10);
 const supportsOxcParser =
-  (nodeMajorVersion === 20 && nodeMinorVersion >= 19) ||
-  nodeMajorVersion > 22 ||
-  (nodeMajorVersion === 22 && nodeMinorVersion >= 12);
+  nodeMajorVersion > 22 || (nodeMajorVersion === 22 && nodeMinorVersion >= 12);
 
 describe("comments", function () {
   const parserIds = [

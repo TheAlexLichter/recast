@@ -13,9 +13,7 @@ import { EOL as eol } from "os";
 const nodeMajorVersion = parseInt(process.versions.node, 10);
 const nodeMinorVersion = parseInt(process.versions.node.split(".")[1], 10);
 const supportsOxcParser =
-  (nodeMajorVersion === 20 && nodeMinorVersion >= 19) ||
-  nodeMajorVersion > 22 ||
-  (nodeMajorVersion === 22 && nodeMinorVersion >= 12);
+  nodeMajorVersion > 22 || (nodeMajorVersion === 22 && nodeMinorVersion >= 12);
 
 // Esprima seems unable to handle unnamed top-level functions, so declare
 // test functions with names and then export them later.

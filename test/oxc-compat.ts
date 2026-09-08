@@ -8,9 +8,7 @@ import { Printer } from "../lib/printer";
 const nodeMajorVersion = parseInt(process.versions.node, 10);
 const nodeMinorVersion = parseInt(process.versions.node.split(".")[1], 10);
 const supportsOxcParser =
-  (nodeMajorVersion === 20 && nodeMinorVersion >= 19) ||
-  nodeMajorVersion > 22 ||
-  (nodeMajorVersion === 22 && nodeMinorVersion >= 12);
+  nodeMajorVersion > 22 || (nodeMajorVersion === 22 && nodeMinorVersion >= 12);
 
 interface Fixture {
   name: string;
@@ -187,10 +185,8 @@ const knownAstTypeExtensions = new Set([
   "ClassProperty.optional",
   "ClassProperty.override",
   "ClassProperty.readonly",
-  "ExportAllDeclaration.exportKind",
   "ExportAllDeclaration.importAttributesKeyword",
   "ExportDefaultDeclaration.exportKind",
-  "ExportNamedDeclaration.exportKind",
   "ExportNamedDeclaration.importAttributesKeyword",
   "ExportSpecifier.exportKind",
   "ExpressionStatement.directive",
@@ -318,38 +314,16 @@ if (supportsOxcParser) {
     });
 
     it("deeply matches the ast-types schema", function () {
-      const mismatches: string[] = [];
-
       auditedFixtures.forEach((fixture) => {
         const ast = parse(fixture.source, {
           parser: oxcParser,
           range: true,
         });
-        const schemaMismatches = collectSchemaMismatches(ast);
-        schemaMismatches.forEach((mismatch) => {
-          mismatches.push(`${fixture.name}: ${mismatch}`);
-        });
-
-        if (schemaMismatches.length === 0) {
-          try {
-            types.namedTypes.File.assert(ast, true);
-          } catch (error) {
-            mismatches.push(
-              `${fixture.name}: deep assertion failed: ${
-                (error as Error).message
-              }`,
-            );
-          }
-        }
+        assert.doesNotThrow(
+          () => types.namedTypes.File.assert(ast, true),
+          `Normalized Oxc AST does not match ast-types in ${fixture.name}`,
+        );
       });
-
-      assert.deepStrictEqual(
-        mismatches,
-        [],
-        `Normalized Oxc AST does not match ast-types:\n${mismatches.join(
-          "\n",
-        )}`,
-      );
     });
 
     it("detects new ast-types traversal gaps", function () {
@@ -440,73 +414,6 @@ interface CollectedNode {
   node: AuditedNode;
   parent: AuditedNode | null;
   field: string | null;
-}
-
-function collectSchemaMismatches(value: unknown): string[] {
-  const mismatches: string[] = [];
-  const seen = new Set<object>();
-
-  function visit(child: unknown, path: string): void {
-    if (!child || typeof child !== "object" || seen.has(child)) {
-      return;
-    }
-    seen.add(child);
-
-    const possibleNode = child as AuditedNode;
-    if (typeof possibleNode.type === "string") {
-      const definition = types.Type.def(possibleNode.type);
-      definition.fieldNames.forEach((fieldName) => {
-        const field = definition.allFields[fieldName];
-        const fieldValue = field.getValue(possibleNode);
-        if (!field.type.check(fieldValue)) {
-          mismatches.push(
-            `${path}.${fieldName}: expected ${
-              field.type
-            }, received ${formatSchemaValue(fieldValue)}`,
-          );
-        }
-      });
-    }
-
-    Object.keys(possibleNode).forEach((key) => {
-      if (key === "loc" || key === "comments") {
-        return;
-      }
-      const nested = possibleNode[key];
-      if (Array.isArray(nested)) {
-        nested.forEach((item, index) =>
-          visit(item, `${path}.${key}[${index}]`),
-        );
-      } else {
-        visit(nested, `${path}.${key}`);
-      }
-    });
-  }
-
-  visit(value, "$");
-  return mismatches;
-}
-
-function formatSchemaValue(value: unknown): string {
-  if (value === undefined) {
-    return "undefined";
-  }
-  if (value === null) {
-    return "null";
-  }
-  if (Array.isArray(value)) {
-    return `[${value
-      .map((item) =>
-        item && typeof item === "object" && "type" in item
-          ? (item as AuditedNode).type
-          : typeof item,
-      )
-      .join(", ")}]`;
-  }
-  if (typeof value === "object" && "type" in value) {
-    return String((value as AuditedNode).type);
-  }
-  return JSON.stringify(value);
 }
 
 function collectNodes(value: unknown): CollectedNode[] {

@@ -29,7 +29,7 @@ export function parse(source: string, options?: Partial<Options>) {
     comment: true,
     onComment: comments,
     tolerant: util.getOption(options, "tolerant", true),
-    ecmaVersion: 6,
+    ecmaVersion: util.getOption(options, "ecmaVersion", 2020),
     sourceType: util.getOption(options, "sourceType", "module"),
   });
 

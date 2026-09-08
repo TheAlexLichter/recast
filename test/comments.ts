@@ -868,4 +868,20 @@ function runTestsForParser(parserId: any) {
 
     assert.strictEqual(recast.print(ast).code, expected);
   });
+  // Comments live in loc.tokens for the babel, babel-ts, typescript and flow
+  // parsers, but not for esprima or acorn. Indexing the adjacent token without
+  // skipping comments made hasParens miss the parenthesis and print a second
+  // pair, so identical input round-tripped differently depending on the parser.
+  [
+    ["a leading line comment", "const a = (\n  // c\n  1\n);"],
+    ["a trailing line comment", "const a = (\n  1\n  // c\n);"],
+    ["a leading block comment", "const a = (\n  /* c */ 1\n);"],
+    ["a trailing block comment", "const a = (\n  1 /* c */\n);"],
+    ["comments on both sides", "const a = (\n  // a\n  1 /* b */\n);"],
+  ].forEach(function ([description, code]) {
+    pit("preserves parentheses around " + description, function () {
+      const ast = recast.parse(code, { parser });
+      assert.strictEqual(recast.print(ast).code, code);
+    });
+  });
 }

@@ -958,3 +958,53 @@ describe("token ranges", function () {
     checkTokenRanges("`before${x}middle${y}after`;\n");
   });
 });
+
+describe("ecmaVersion option", function () {
+  const acorn = "../parsers/acorn";
+
+  // recast passed a hardcoded ecmaVersion: 6 to every parser, which overrode
+  // the value ../parsers/acorn asks for and made the acorn parser documented
+  // in the README reject anything newer than ES6 (#620).
+  const newerThanEs6 = [
+    ["object spread", "var x = {...y};\n"],
+    ["object rest", "const { ...props } = obj;\n"],
+    ["exponentiation", "a ** b;\n"],
+    ["async and await", "async function f() {\n  await 1;\n}\n"],
+    ["optional catch binding", "try {} catch {}\n"],
+  ];
+
+  newerThanEs6.forEach(function ([label, code]) {
+    it(`parses and reprints ${label} with acorn`, function () {
+      const ast = parse(code, { parser: require(acorn) });
+      assert.strictEqual(new Printer().print(ast).code, code);
+    });
+  });
+
+  it("passes an explicit ecmaVersion through to the parser", function () {
+    // A lower version must still be honoured, otherwise the option is being
+    // ignored rather than threaded.
+    assert.throws(function () {
+      parse("var x = {...y};\n", {
+        parser: require(acorn),
+        ecmaVersion: 6,
+      } as any);
+    });
+
+    const ast = parse("a ** b;\n", {
+      parser: require(acorn),
+      ecmaVersion: 2016,
+    } as any);
+    assert.strictEqual(new Printer().print(ast).code, "a ** b;\n");
+  });
+
+  it("reprints untouched newer syntax when a sibling changes", function () {
+    const code = ["var a = {...x};", "var b = 1;", ""].join("\n");
+    const ast = parse(code, { parser: require(acorn) });
+    ast.program.body[1].declarations[0].init.value = 2;
+
+    assert.strictEqual(
+      new Printer().print(ast).code,
+      ["var a = {...x};", "var b = 2;", ""].join("\n"),
+    );
+  });
+});

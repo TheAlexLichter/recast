@@ -275,13 +275,27 @@ FPp.hasParens = function () {
   return false;
 };
 
+function isCommentToken(token: any) {
+  // The babel, babel-ts, typescript and flow parsers include comments in
+  // loc.tokens; esprima and acorn do not. Comment tokens carry a string type,
+  // whereas syntactic tokens carry a token-type object.
+  const type = token && token.type;
+  return type === "CommentLine" || type === "CommentBlock";
+}
+
 FPp.getPrevToken = function (node) {
   node = node || this.getNode();
   const loc = node && node.loc;
   const tokens = loc && loc.tokens;
   if (tokens && loc.start.token > 0) {
-    const token = tokens[loc.start.token - 1];
-    if (token) {
+    let index = loc.start.token - 1;
+    // Comments are not syntax. Skip them so that a comment between a node and
+    // its opening parenthesis does not hide the parenthesis from hasParens.
+    while (index > 0 && isCommentToken(tokens[index])) {
+      index--;
+    }
+    const token = tokens[index];
+    if (token && !isCommentToken(token)) {
       // Do not return tokens that fall outside the root subtree.
       const rootLoc = this.getRootValue().loc;
       if (util.comparePos(rootLoc.start, token.loc.start) <= 0) {
@@ -297,8 +311,12 @@ FPp.getNextToken = function (node) {
   const loc = node && node.loc;
   const tokens = loc && loc.tokens;
   if (tokens && loc.end.token < tokens.length) {
-    const token = tokens[loc.end.token];
-    if (token) {
+    let index = loc.end.token;
+    while (index < tokens.length - 1 && isCommentToken(tokens[index])) {
+      index++;
+    }
+    const token = tokens[index];
+    if (token && !isCommentToken(token)) {
       // Do not return tokens that fall outside the root subtree.
       const rootLoc = this.getRootValue().loc;
       if (util.comparePos(token.loc.end, rootLoc.end) <= 0) {
@@ -394,8 +412,10 @@ FPp.needsParens = function (assumeExpressionContext) {
     case "UnaryExpression":
     case "SpreadElement":
     case "SpreadProperty":
+      // `n.MemberExpression.check` also matches `OptionalMemberExpression`, so
+      // e.g. `(-a)?.b` is parenthesized just like `(-a).b`.
       return (
-        parent.type === "MemberExpression" &&
+        n.MemberExpression.check(parent) &&
         name === "object" &&
         parent.object === node
       );
@@ -420,7 +440,11 @@ FPp.needsParens = function (assumeExpressionContext) {
     case "BinaryExpression":
     case "LogicalExpression":
       switch (parent.type) {
+        // `OptionalCallExpression` / `OptionalMemberExpression` are the
+        // optional-chaining counterparts of `CallExpression` /
+        // `MemberExpression` and parenthesize their operands the same way.
         case "CallExpression":
+        case "OptionalCallExpression":
           return name === "callee" && parent.callee === node;
 
         case "UnaryExpression":
@@ -429,6 +453,7 @@ FPp.needsParens = function (assumeExpressionContext) {
           return true;
 
         case "MemberExpression":
+        case "OptionalMemberExpression":
           return name === "object" && parent.object === node;
 
         case "BinaryExpression":
@@ -437,6 +462,20 @@ FPp.needsParens = function (assumeExpressionContext) {
           const pp = PRECEDENCE[po];
           const no = node.operator;
           const np = PRECEDENCE[no];
+
+          // `??` cannot be combined with `||` or `&&` without parentheses.
+          // The `CoalesceExpression` production only admits
+          // `BitwiseORExpression` operands, plus a nested
+          // `CoalesceExpression` on the left, so both `a || b ?? c` and
+          // `a ?? b || c` are SyntaxErrors. Comparing precedence only
+          // parenthesizes a `??` nested inside `||` or `&&`, never a `||`
+          // or `&&` nested inside `??`.
+          if (
+            (po === "??" && (no === "||" || no === "&&")) ||
+            (no === "??" && (po === "||" || po === "&&"))
+          ) {
+            return true;
+          }
 
           if (pp > np) {
             return true;
@@ -522,7 +561,9 @@ FPp.needsParens = function (assumeExpressionContext) {
         case "LogicalExpression":
           return true;
 
+        // Optional-chaining parents, e.g. `(await x)?.y` like `(await x).y`.
         case "CallExpression":
+        case "OptionalCallExpression":
         case "NewExpression":
           return name === "callee" && parent.callee === node;
 
@@ -530,6 +571,7 @@ FPp.needsParens = function (assumeExpressionContext) {
           return name === "test" && parent.test === node;
 
         case "MemberExpression":
+        case "OptionalMemberExpression":
           return name === "object" && parent.object === node;
 
         default:

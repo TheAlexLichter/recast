@@ -5,8 +5,6 @@
 //     parser: require("recast/parsers/oxc")
 //   });
 //
-import { registerOxcAstTypesExtensions } from "./_oxc_ast_types";
-
 export interface OxcParserOptions {
   /**
    * Oxc uses the filename in diagnostics. Syntax selection is controlled by
@@ -72,8 +70,6 @@ const parseSync: (
   source: string,
   options: OxcParserOptions,
 ) => OxcParseResult = require("oxc-parser").parseSync;
-
-registerOxcAstTypesExtensions();
 
 export function createOxcParser(parserOptions: OxcParserOptions = {}) {
   const {

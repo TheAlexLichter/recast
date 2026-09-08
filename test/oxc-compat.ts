@@ -173,7 +173,7 @@ const metadataFields = new Set([
 ]);
 
 // These fields are emitted by Oxc and retained because they are semantically
-// meaningful or useful parser metadata, but ast-types 0.16.1 does not declare
+// meaningful or useful parser metadata, but ast-types 0.16.3 does not declare
 // them. The semantic round-trip tests below ensure printer support for the
 // meaningful fields, while this allowlist makes newly observed fields fail.
 const knownAstTypeExtensions = new Set([
@@ -248,28 +248,6 @@ if (supportsOxcParser) {
   const auditedFixtures = fixtures.concat(corpusFixtures);
 
   describe("Oxc compatibility audit", function () {
-    it("registers ast-types extensions idempotently on Recast's shared types", function () {
-      const recast = require("../main");
-      const {
-        registerOxcAstTypesExtensions,
-      } = require("../parsers/_oxc_ast_types");
-      const callDefinition = types.Type.def("CallExpression") as any;
-      const typeParametersField = callDefinition.allFields.typeParameters;
-
-      registerOxcAstTypesExtensions();
-      registerOxcAstTypesExtensions();
-
-      assert.strictEqual(recast.types, types);
-      assert.strictEqual(
-        callDefinition.allFields.typeParameters,
-        typeParametersField,
-      );
-      assert.strictEqual(
-        types.builders.variableDeclaration("const", []).kind,
-        "const",
-      );
-    });
-
     fixtures.forEach((fixture) => {
       it(`preserves semantics when generically printing ${fixture.name}`, function () {
         assert.strictEqual(
